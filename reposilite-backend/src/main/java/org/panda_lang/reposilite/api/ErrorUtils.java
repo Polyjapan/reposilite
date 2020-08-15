@@ -23,9 +23,18 @@ public final class ErrorUtils {
     private ErrorUtils() { }
 
     public static Context error(Context context, int status, String message) {
-        return context
-                .status(status)
-                .json(new ErrorDto(status, message));
+        return error(context, status, message, false);
     }
 
+    public static Context error(Context context, int status, String message, boolean requireCredentials) {
+        Context ctx = context
+                .status(status)
+                .json(new ErrorDto(status, message));
+
+        if (requireCredentials) {
+            return ctx.header("WWW-Authenticate", "Basic realm=reposilite");
+        } else {
+            return ctx;
+        }
+    }
 }

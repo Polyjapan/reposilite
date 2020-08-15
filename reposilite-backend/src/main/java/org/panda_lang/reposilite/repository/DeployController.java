@@ -27,6 +27,7 @@ import org.panda_lang.reposilite.auth.Session;
 import org.panda_lang.reposilite.config.Configuration;
 import org.panda_lang.reposilite.metadata.MetadataService;
 import org.panda_lang.reposilite.utils.Result;
+import org.panda_lang.utilities.commons.collection.Pair;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,24 +56,24 @@ public final class DeployController implements Handler {
         Reposilite.getLogger().info("DEPLOY " + context.req.getRequestURI() + " from " + context.req.getRemoteAddr());
 
         deploy(context)
-            .onError(error -> ErrorUtils.error(context, HttpStatus.SC_UNAUTHORIZED, error));
+            .onError(error -> ErrorUtils.error(context, HttpStatus.SC_UNAUTHORIZED, error.getValue(), error.getKey()));
     }
 
-    public Result<Context, String> deploy(Context context) {
+    public Result<Context, Pair<Boolean, String>> deploy(Context context) {
         if (!configuration.deployEnabled) {
-            return Result.error("Artifact deployment is disabled");
+            return Result.error(new Pair<>(false, "Artifact deployment is disabled"));
         }
 
         Result<Session, String> authResult = this.authenticator.authDefault(context);
 
         if (authResult.containsError()) {
-            return Result.error(authResult.getError());
+            return Result.error(new Pair<>(true, authResult.getError()));
         }
 
         DiskQuota diskQuota = repositoryService.getDiskQuota();
 
         if (!diskQuota.hasUsableSpace()) {
-            return Result.error("Out of disk space");
+            return Result.error(new Pair<>(false, "Out of disk space"));
         }
 
         File file = repositoryService.getFile(context.req.getRequestURI());
@@ -92,7 +93,7 @@ public final class DeployController implements Handler {
             return Result.ok(context.result("Success"));
         } catch (IOException e) {
             reposilite.throwException(context.req.getRequestURI(), e);
-            return Result.error("Failed to upload artifact");
+            return Result.error(new Pair<>(false, "Failed to upload artifact"));
         }
     }
 
